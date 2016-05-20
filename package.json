@@ -1,26 +1,53 @@
 {
   "name": "dominos",
-  "version": "0.1.2",
-  "description": "API for domino's Pizza",
+  "payment=disallowed-name": "pizzapi",
+  "version": "2.0.1",
+  "description": "node js API for Domino's pizza",
   "main": "dominos-pizza-api.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha",
+    "start": "node example/commandline-pizza/dominos-commandline-pizza.js"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/RIAEvangelist/node-dominos-pizza-api.git"
+    "url": "https://github.com/RIAEvangelist/node-dominos-pizza-api.git"
   },
-  "dependencies": {
-    "xml2json": "^0.5.1",
-    "request": "^2.50.0"
+  "engines": {
+    "node": ">=0.10.0"
   },
   "keywords": [
     "Dominos",
     "Domino's",
     "Pizza",
-    "API"
+    "API",
+    "Pie",
+    "PizzaPI"
   ],
-  "author": "Brandon Nozaki Miller",
+  "author": {
+    "name": "Brandon Miller",
+    "email": "brandon@diginow.it"
+  },
+  "contributors": [
+    {
+      "name": "Julian Hartline",
+      "email": "julianh2o@gmail.com",
+      "url": "http://www.julianhartline.com"
+    },
+    {
+      "name": "Madeline Cameron",
+      "email": "madeline@madelinecameron.net",
+      "url": "http://madelinecameron.net"
+    },
+    {
+      "name": "Adrian Sida"
+    },
+    {
+      "name": "Victor Quinn"
+    },
+    {
+      "name": "Matt Cotter"
+    }
+  ],
   "license": "DBAD",
   "bugs": {
     "url": "https://github.com/RIAEvangelist/node-dominos-pizza-api/issues"
@@ -28,10 +55,14 @@
   "directories": {
     "example": "example"
   },
-  "devDependencies": {
-    "colors": "^1.0.3",
+  "dependencies": {
     "request": "^2.50.0",
-    "xml2json": "^0.5.1"
+    "xml2json": "^0.9.0"
   },
-  "homepage": "https://github.com/RIAEvangelist/node-dominos-pizza-api"
+  "devDependencies": {
+    "chai": "^3.0.0",
+    "colors": "^1.0.3",
+    "mocha": "^2.2.5"
+  },
+  "homepage": "https://github.com/madelinecameron/PizzaPI"
 }

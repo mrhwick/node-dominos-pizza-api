@@ -2,7 +2,9 @@ var fs          = require('fs'),
     path        = require('path'),
     readline    = require('readline'),
     colors      = require('colors'),
-    dominos     = require('../../dominos-pizza-api.js');
+    pizzapi     = require('../../dominos-pizza-api.js');
+
+var util=require('util');
 
 colors.setTheme(
     {
@@ -28,64 +30,58 @@ readline.clearScreenDown(process.stdout);
 rl.setPrompt('Pizza> ');
 rl.prompt();
 
-var order=new dominos.class.Order();
+var order=new pizzapi.Order();
 
 rl.on(
-    'line', 
+    'line',
     function(chunk) {
         chunk=chunk.trim();
-        
+
         if (chunk !== null) {
             chunk = chunk.replace( /\s\s+/g, ' ' ).trim();
-            
+
             var data = chunk.toLowerCase();
-            
+
             if(data.indexOf('find near ')>-1){
                 findStores(data.slice(10));
                 return;
             }
-            
+
             if(data.indexOf('find closest ')>-1){
                 findStores(data.slice(data.indexOf('find closest ')+13),true);
                 return;
             }
-            
+
             if(data.indexOf('full menu for closest')>-1){
                 findStores(data.slice(data.indexOf('full menu for closest')+21),true,false,true);
                 return;
             }
-            
+
             if(data.indexOf('menu for closest')>-1){
                 findStores(data.slice(data.indexOf('menu for closest')+16),true,true);
                 return;
             }
-            
+
             if(data.indexOf('full menu for ')>-1){
                 showMenu(data.slice(data.indexOf('full menu for ')+14));
                 return;
             }
-            
+
             if(data.indexOf('menu for ')>-1){
                 showMenu(data.slice(data.indexOf('menu for ')+9),true);
                 return;
             }
-            
+
             if(data.indexOf('order ')>-1){
                 orderPizza(data.slice(data.indexOf('order ')+6),true);
                 return;
             }
-            
-            if(data.indexOf('track ')>-1){
-                order.Order.Phone=data.slice(data.indexOf('track ')+6).trim();
-                trackOrder();
-                return;
-            }            
-            
+
             if(data.indexOf('help')>-1){
                 help();
                 return;
             }
-            
+
             rl.prompt();
         }
     }
@@ -93,15 +89,15 @@ rl.on(
 
 function help(){
     var commands=[
-        'find closest'.bgCyan+' {address info}'.info+' //can be full address city and state, postal code etc...',
-        'find near'.bgCyan+' {address info}'.info+' //can be full address city and state, postal code etc...',
-        'menu for closest'.bgCyan+' {address info}'.info+' //can be full address city and state, postal code etc...',
-        'full menu for closest'.bgCyan+' {address info}'.info+' //can be full address city and state, postal code etc...',
-        'menu for'.bgCyan+' {storeID}'.info+' //get store id as part of a find closest or find near request',
-        'full menu for'.bgCyan+' {storeID}'.info+' //get store id as part of a find closest or find near request',
-        'order'.bgCyan+' {comma deliminated list of item codes}'.info+' //get item codes from menu'
+        'find closest'.bgCyan+' {address info}'.info+' can be full or partial address city and state, postal code etc...',
+        'find near'.bgCyan+' {address info}'.info+' can be full or partial address city and state, postal code etc...',
+        'menu for closest'.bgCyan+' {address info}'.info+' can be full or partital address city and state, postal code etc...',
+        'full menu for closest'.bgCyan+' {address info}'.info+' can be full or partial address city and state, postal code etc...',
+        'menu for'.bgCyan+' {storeID}'.info+' get store id as part of a find closest or find near request',
+        'full menu for'.bgCyan+' {storeID}'.info+' get store id as part of a find closest or find near request',
+        'order'.bgCyan+' {comma deliminated list of item codes} \nexample:\norder PXC_14SCREEN, 2LSPRITE'.info+' !!!!get item codes from menu'
     ];
-    
+
     for(var i in commands){
         console.log(commands[i]+'\n');
     }
@@ -110,19 +106,24 @@ function help(){
 
 /*
  * pass in pizza info
- * 
+ *
  */
 
 
 function showMenu(storeID,quick){
     console.log('Fetching menu for '+storeID.info+'...');
-    order.Order.StoreID=storeID
+    order.StoreID=storeID
     rl.prompt();
-    
-    dominos.store.menu(
-        storeID,
-        function(data){
-            
+
+    var store=new pizzapi.Store(
+        {
+            ID:storeID
+        }
+    );
+
+    store.getMenu(
+        function(menu){
+            var data = menu.getRaw();
             if(quick){
                 console.log(
                     '\n##########################\n'.blue,
@@ -130,36 +131,36 @@ function showMenu(storeID,quick){
                     '\n##########################\n'.blue
                 );
                 for(var i in data.result.PreconfiguredProducts){
-                    var product=data.result.PreconfiguredProducts[i];
+                    var item=data.result.PreconfiguredProducts[i];
                     console.log(
                         '\n'.blue+
                         (
                             (
-                                product.Name.bold+' : '+
-                                product.Code+'\n'
+                                item.Name.bold+' : '+
+                                item.Code+'\n'
                             ).menuTitle+
-                            product.Description+'\n'+
-                            product.Size
+                            item.Description+'\n'+
+                            item.Size
                         ).menuItem.white
                     );
                 };
-                
+
                 rl.prompt();
                 return;
             }
-            
+
             console.log(
                 '\n##########################\n'.blue,
                 'Full Menu'.yellow,
                 '\n##########################\n'.blue
             );
-            
+
             var menuPortions=[
                 'Sides',
                 'PreconfiguredProducts',
                 'Products'
             ];
-            
+
             for(var j in menuPortions){
                 for(var i in data.result[menuPortions[j]]){
                     if(!data.result[menuPortions[j]][i].Name){
@@ -172,90 +173,136 @@ function showMenu(storeID,quick){
                         );
 
                         for(var k in data.result[menuPortions[j]][i]){
-                            var product=data.result[menuPortions[j]][i][k];
+                            var item=data.result[menuPortions[j]][i][k];
                             console.log(
                                 '(+)'+(
                                     (
-                                        product.Name.bold+' : '+
-                                        product.Code+'\n'
+                                        item.Name.bold+' : '+
+                                        item.Code+'\n'
                                     ).menuTitle+
-                                    product.Description+'\n'+
-                                    product.Size
+                                    item.Description+'\n'+
+                                    item.Size
                                 ).menuItem.white
                             );
                         }
                         continue;
                     }
-                    var product=data.result[menuPortions[j]][i];
+                    var item=data.result[menuPortions[j]][i];
                     console.log(
                         '(+)'+(
                             (
-                                product.Name.bold+' : '+
-                                product.Code+'\n'
+                                item.Name.bold+' : '+
+                                item.Code+'\n'
                             ).menuTitle+
-                            product.Description+'\n'+
-                            product.Size
+                            item.Description+'\n'+
+                            item.Size
                         ).menuItem.white
                     );
                 };
             }
+            rl.prompt();
         }
     );
 }
 
 function validateAddress(address){
-    console.log(address);
-    dominos.store.find(
-        address, 
+    var address=new pizzapi.Address(address);
+    pizzapi.Util.findNearbyStores(
+        address,
         function(storeData){
-            order.Order.Address=storeData.result.Address;
-            if(!order.Order.Address.Street){
+            order.Address=storeData.result.Address;
+            if(!order.Address.Street){
                 rl.question(
-                    'Not a valid address.'.red+' What is the full address for delivery?',
+                    'Not a valid address.'.red
+                    +' if your having trouble, try using this format :\n'+'street, city, state, zip'.info+' with the commas.\n\n'
+                    +'What is the full address for delivery? ',
                     validateAddress
                 );
                 return;
             }
-            
-            validateOrder(order);
+
+            if(!order.StoreID){
+                console.log(
+                    'You have not viewed any store\'s Menu, so you will get your order from the closest open store which delivers.\n'
+                    +'And you\'ll like it!'.red
+                );
+            }
+
+            pizzapi.Util.findNearbyStores(
+                order.Address,
+                'Delivery',
+                function(storeData){
+                    var openStores=[];
+
+                    for(var i in storeData.result.Stores){
+                        if(storeData.result.Stores[i].IsOpen &&
+                            storeData.result.Stores[i].IsOnlineNow &&
+                            storeData.result.Stores[i].ServiceIsOpen.Delivery
+                        ){
+                            order.StoreID=storeData.result.Stores[i].StoreID;
+                            break;
+                        }
+                    }
+
+                    if(!order.StoreID){
+                        console.log('No Open Stores allowing delivery right now for the specified location'.bgRed.black.bold);
+                        throw('NO PIZZA FOR YOU! Look at a menu next time!');
+                        return;
+                    }
+                }
+            );
+
+            validateOrder();
         }
     );
 }
 
 function findStores(address, closest, menu, fullMenu){
+    if(!address){
+        console.log('Need to know where to look, please provide atleast a zip code');
+        rl.prompt();
+        return;
+    }
     console.log('Looking for stores near '+address.info+'...');
     rl.prompt();
-    
-    dominos.store.find(
-        address, 
+    var nearAddress=new pizzapi.Address(address);
+
+    if(!nearAddress.PostalCode){
+        console.log('Not a valid address'.red+' you must at least provide a zipcode');
+        return;
+    }
+    pizzapi.Util.findNearbyStores(
+        nearAddress,
+        'Delivery',
         function(storeData){
             var openStores=[];
-            order.Order.Address=storeData.result.Address;
-            
+
+            order.Address=new pizzapi.Address(storeData.result.Address);
+
             for(var i in storeData.result.Stores){
-                if(storeData.result.Stores[i].IsOpen && 
-                    storeData.result.Stores[i].IsOnlineNow && 
+                if(storeData.result.Stores[i].IsOpen &&
+                    storeData.result.Stores[i].IsOnlineNow &&
                     storeData.result.Stores[i].ServiceIsOpen.Delivery
                 ){
                     openStores.push(storeData.result.Stores[i]);
                 }
             }
-            
+
             if(openStores.length<1){
                 console.log('No Open Stores allowing delivery right now for the specified location'.bgRed.black.bold);
                 return;
             }
-            
+
             var count=openStores.length;
-            
+
             if(closest){
                 count=1;
-                order.Order.StoreID=openStores[0].StoreID
+                order.StoreID=openStores[0].StoreID
             }
             console.log('\n');
             for(var i=0; i<count; i++){
                 var store=openStores[i];
-                
+
                 console.log(
                     '###############################################################\n'.blue+
                     (
@@ -266,20 +313,21 @@ function findStores(address, closest, menu, fullMenu){
                     ).store.white
                 );
             }
-            
+
             rl.prompt();
-            
+
             if(!menu && !fullMenu)
                 return;
-            
+
             if(menu){
                 showMenu(
                     openStores[0].StoreID,
                     true
                 );
+                rl.prompt();
                 return;
             }
-            
+
             if(fullMenu){
                 showMenu(
                     openStores[0].StoreID
@@ -293,108 +341,92 @@ function findStores(address, closest, menu, fullMenu){
 function orderPizza(items){
     var items=items.split(',');
     for(var i=0; i<items.length; i++){
-        //create a new product to add to the order
-        var product=new dominos.class.Product();
-
-        //set the product code using the random item key 
-        product.Code=items[i].trim().toUpperCase();
-
-        //add the item to the order
-        order.Order.Products.push(product);
+        //create a new item to add to the order
+        order.addItem(
+            new pizzapi.Item(
+                {
+                    code: items[i].trim(),
+                    options: [],
+                    quantity: 1
+                }
+            )
+        );
     }
-    
-    if(!order.Order.Address.Street){
+
+    if(!order.Address.Street){
         rl.question(
-            'what is the full address for delivery?',
+            'what is the full address for delivery? ',
             validateAddress
         );
         return;
     }
-    
-    console.log(order.Order.Products);
-    
+
     validateOrder();
 }
 
 function validateOrder(){
-    if(!order.Order.FirstName){
+    //console.log('validating order');
+    if(!order.FirstName){
+        setTimeout(
+            function(){
+                rl.question(
+                    'First Name? ',
+                    function(data){
+                        order.FirstName=data;
+                        validateOrder();
+                    }
+                );
+            },100
+        );
+        return;
+    }
+
+    if(!order.LastName){
         rl.question(
-            'First Name?',
+            'Last Name? ',
             function(data){
-                order.Order.FirstName=data;
+                order.LastName=data;
                 validateOrder();
             }
         );
         return;
     }
-    
-    if(!order.Order.LastName){
+
+    if(!order.Email){
         rl.question(
-            'Last Name?',
+            'E-Mail? ',
             function(data){
-                order.Order.LastName=data;
+                order.Email=data;
                 validateOrder();
             }
         );
         return;
     }
-    
-    if(!order.Order.Email){
+
+    if(!order.Phone){
         rl.question(
-            'E-Mail?',
+            'Phone number? ',
             function(data){
-                order.Order.Email=data;
+                order.Phone=data;
                 validateOrder();
             }
         );
         return;
     }
-    
-    if(!order.Order.Phone){
-        rl.question(
-            'Phone number?',
-            function(data){
-                order.Order.Phone=data;
-                validateOrder();
-            }
-        );
-        return;
-    }
-    
-    if(!order.Order.Phone){
-        rl.question(
-            'Phone number?',
-            function(data){
-                order.Order.Phone=data;
-                validateOrder();
-            }
-        );
-        return;
-    }
-    
-    dominos.order.validate(
-        order,
-        validatedOrder
-    );
+
+    order.validate(orderValidated);
 }
 
-function validatedOrder(data){
-    console.log(JSON.stringify(data));
-    order=data.result;
-    
-    dominos.order.price(
-        order,
-        pricedOrder
-    );
+function orderValidated(){
+    order.price(pricedOrder);
 }
 
-function pricedOrder(priceData) {
-    console.log(priceData);
-    
-    var cardInfo = new dominos.class.Payment();
-    cardInfo.Amount = priceData.result.Order.Amounts.Customer;
-    order.Order.Payments.push(cardInfo);
-    
+function pricedOrder() {
+
+    var cardInfo = new order.PaymentObject();
+    cardInfo.Amount = order.Amounts.Customer;
+    order.Payments.push(cardInfo);
+
     placeOrder();
 }
 
@@ -408,112 +440,107 @@ function validateCC(number){
         jcb         : /^(?:2131|1800|35\d{3})\d{11}$/,
         enroute     : /^(?:2014|2149)\d{11}$/
     };
-    
+
     if (re.visa.test(number))
         return 'VISA';
-   
+
     if (re.mastercard.test(number))
         return 'MASTERCARD';
-    
+
     if (re.amex.test(number))
         return 'AMEX';
-    
+
     if (re.diners.test(number))
         return 'DINERS';
-    
+
     if (re.discover.test(number))
         return 'DISCOVER';
-    
+
     if (re.jcb.test(number))
         return 'JCB';
-    
+
     if (re.enroute.test(number))
         return 'JCB';
-    
+
     return "";
 }
 
 function placeOrder(){
-    if(!order.Order.Payments[0].Number){
+    if(!order.Payments[0].Number){
         rl.question(
-            'Credit Card Number?',
+            'Credit Card Number? ',
             function(data){
-                order.Order.Payments[0].Number = data;
-                order.Order.Payments[0].CardType = validateCC(data);
+                order.Payments[0].Number = data;
+                order.Payments[0].CardType = validateCC(data);
                 placeOrder();
             }
         );
-        return;
-    }
-    
-    if(!order.Order.Payments[0].Expiration){
-        rl.question(
-            'Credit Card Expiration?',
-            function(data){
-                order.Order.Payments[0].Expiration = data.replace(/\D/g,'');
-                placeOrder();
-            }
-        );
-        return;
-    }
-    
-    if(!order.Order.Payments[0].SecurityCode){
-        rl.question(
-            'Credit Card Security Code or CVV (3 or 4 digit code on card)?',
-            function(data){
-                order.Order.Payments[0].SecurityCode = data;
-                placeOrder();
-            }
-        );
-        return;
-    }
-    
-    if(!order.Order.Payments[0].PostalCode){
-        rl.question(
-            'Postal Code?',
-            function(data){
-                order.Order.Payments[0].PostalCode = data;
-                placeOrder();
-            }
-        );
-        rl.write(order.Order.Address.PostalCode);
         return;
     }
 
-    dominos.order.place(order, orderPlaced);
+    if(!order.Payments[0].Expiration){
+        rl.question(
+            'Credit Card Expiration? ',
+            function(data){
+                order.Payments[0].Expiration = data.replace(/\D/g,'');
+                placeOrder();
+            }
+        );
+        return;
+    }
+
+    if(!order.Payments[0].SecurityCode){
+        rl.question(
+            'Credit Card Security Code or CVV (3 or 4 digit code on card)? ',
+            function(data){
+                order.Payments[0].SecurityCode = data;
+                placeOrder();
+            }
+        );
+        return;
+    }
+
+    if(!order.Payments[0].PostalCode){
+        rl.question(
+            'Postal Code? ',
+            function(data){
+                order.Payments[0].PostalCode = data;
+                placeOrder();
+            }
+        );
+        rl.write(order.Address.PostalCode);
+        return;
+    }
+
+    order.place(orderPlaced);
 }
 
 function orderPlaced(data){
-    order=data.result;
     if(data.result.Order.Status==-1){
-        console.log(JSON.stringify(data));
-        console.log(order.Order.CorrectiveAction);
+        console.log('You\'r order failed to process.');
+        if(data.result.Order.StatusItems){
+            for(var i in data.result.Order.StatusItems){
+                console.log(data.result.Order.StatusItems[i]);
+            }
+        }
+        console.log('Corrective Actions from Domino\'s Pizza : '+data.result.CorrectiveAction);
+
         rl.prompt();
         return;
-    }    
-    
+    }
+
     trackOrder();
 }
 
 function trackOrder(){
-    dominos.track.phone(
-        order.Order.Phone,
+    pizzapi.Track.orderKey(
+        order.OrderID,
+        order.StoreID,
         function(pizzaData){
             readline.cursorTo(process.stdout, 0, 0);
             readline.clearScreenDown(process.stdout);
-            
+
             console.log(JSON.stringify(pizzaData.orders));
-            console.log(
-                pizzaData.orders.OrderStatus.OrderDescription.bgCyan,
-                'status : '+pizzaData.orders.OrderStatus.OrderStatus.bgGreen
-            );
-            
-            if(typeof pizzaData.orders.OrderStatus.DriverName == 'string'){
-                console.log(
-                    'Driver Name : '+pizzaData.orders.OrderStatus.DriverName.bgGreen
-                );
-            }
-        
             setTimeout(
                 trackOrder,
                 15000

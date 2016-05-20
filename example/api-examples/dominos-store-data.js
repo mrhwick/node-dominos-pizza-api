@@ -1,42 +1,23 @@
-var dominos=require("../../dominos-pizza-api");
+var pizzapi = require('../../dominos-pizza-api');
 
 //Get stores by postal code, distance is not as accurate this way
-dominos.store.find(
-    '20500', //address to search for nearby stores
-    function(storeData){ //callback to run when api returns
-        console.log('\n\n########################\nDomino\'s Near Postal Code\n########################\n', storeData, '\n-------------------------\n', storeData.result.Stores,'\n############\n');
-    }
-);
+pizzapi.Util.findNearbyStores(
+    '63102',
+    'Delivery',
+    function(storeData) {
+        var Store = new pizzapi.Store(
+            {
+                ID: storeData.result.Stores[0].StoreID
+            }
+        );
 
-//Get stores near an exact address, they will be sorted by distance
-dominos.store.find(
-    '1600 Pennsylvania Ave NW, 20500', //address to search for nearby stores
-    function(storeData){ //callback to run when api returns
-        console.log('\n\n########################\nDomino\'s Near Address Sorted by distance\n########################\n', storeData,  '\n-------------------------\n', storeData.result.Stores,'\n############\n');
-    }
-);
+        console.log('\n\n##################\nFirst Store Object\n##################\n\n',Store);
 
-//Get stores near an exact multi-line address, they will be sorted by distance
-dominos.store.find(
-    ['1600 Pennsylvania Ave NW', 'Washington, DC 20500'], //address to search for nearby stores
-    function(storeData){ //callback to run when api returns
-        console.log('\n\n########################\nDomino\'s Near Multi-Line Address Sorted by distance\n########################\n', storeData,  '\n-------------------------\n', storeData.result.Stores,'\n############\n');
-    }
-);
-
-
-//Get Store Info for Store #4336
-dominos.store.info(
-    4336, //storeID
-    function(storeData){ //callback to run when api returns
-        console.log('\n\n########################\nStore Info\n########################\n', storeData,'\n############\n');
-    }
-);
-
-//Get Menu for Store #4336
-dominos.store.menu(
-    4336, //storeID
-    function(storeData){ //callback to run when api returns
-        console.log('\n\n########################\nStore Menu\n########################\n', storeData,'\n############\n');
+        //Get Info for first store
+        Store.getInfo(
+            function(storeData) {
+                console.log('\n\n##################\nFirst Store Info\n##################\n\n',storeData.result);
+            }
+        );
     }
 );
