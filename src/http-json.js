@@ -6,6 +6,7 @@ module.exports.post = function(url, req, callback) {
 
     var requestBody = {
         uri: url,
+        withCredentials: false,
         headers: {
             Referer:'https://order.dominos.com/en/pages/order/',
             'Content-Type': 'application/json'
@@ -48,6 +49,7 @@ module.exports.post = function(url, req, callback) {
 module.exports.get = function(url, callback){
     var requestBody = {
         uri: url,
+        withCredentials: false,
         headers: {
             'Referer': 'https://order.dominos.com/en/pages/order/'
         }
