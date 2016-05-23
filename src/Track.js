@@ -2,7 +2,7 @@
 
 var urls = require('./urls.json');
 var request = require('request');
-var parser = require('xml2json');
+var parseString = require('xml2js').parseString;
 
 module.exports.byPhone = function(phone, callback) {
     if( !phone || !callback) {
@@ -51,47 +51,48 @@ module.exports.byUrl = function(url, callback){
                 return;
             }
 
-            var result = parser.toJson(
+            parseString(
                 body,
                 {
                     coerce: false,
                     sanitize: false,
                     object: true,
                     trim: false
+                },
+                function (err, result) {
+                    if(!result['soap:Envelope']){
+                        callback({
+                            success: false,
+                            message: 'API soap:Envelope not present',
+                            data: result
+                        });
+                        return;
+                    }
+
+                    if(!result['soap:Envelope']['soap:Body']){
+                        callback({
+                            success: false,
+                            message: 'API soap:Body not present',
+                            data: result
+                        });
+                        return;
+                    }
+
+                    if(!result['soap:Envelope']['soap:Body'].GetTrackerDataResponse){
+                        callback({
+                            success: false,
+                            message:'API GetTrackerDataResponse not present',
+                            data: result
+                        });
+                        return;
+                    }
+
+                    callback({
+                        orders: result['soap:Envelope']['soap:Body'].GetTrackerDataResponse.OrderStatuses,
+                        query: result['soap:Envelope']['soap:Body'].GetTrackerDataResponse.Query
+                    });
                 }
             );
-
-            if(!result['soap:Envelope']){
-                callback({
-                    success: false,
-                    message: 'API soap:Envelope not present',
-                    data: result
-                });
-                return;
-            }
-
-            if(!result['soap:Envelope']['soap:Body']){
-                callback({
-                    success: false,
-                    message: 'API soap:Body not present',
-                    data: result
-                });
-                return;
-            }
-
-            if(!result['soap:Envelope']['soap:Body'].GetTrackerDataResponse){
-                callback({
-                    success: false,
-                    message:'API GetTrackerDataResponse not present',
-                    data: result
-                });
-                return;
-            }
-
-            callback({
-                orders: result['soap:Envelope']['soap:Body'].GetTrackerDataResponse.OrderStatuses,
-                query: result['soap:Envelope']['soap:Body'].GetTrackerDataResponse.Query
-            });
         }
     );
 };
