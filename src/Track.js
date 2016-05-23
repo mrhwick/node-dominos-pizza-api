@@ -54,9 +54,6 @@ module.exports.byUrl = function(url, callback){
             parseString(
                 body,
                 {
-                    coerce: false,
-                    sanitize: false,
-                    object: true,
                     trim: false
                 },
                 function (err, result) {
